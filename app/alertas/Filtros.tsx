@@ -64,7 +64,7 @@ export default function Filtros() {
             : 'bg-zinc-900 text-zinc-400 hover:text-white'
         }`}
       >
-        {localizando ? '📍 Localizando...' : 'Próximos a mim'}
+        {localizando ? 'Localizando...' : 'Próximos a mim'}
       </button>
 
       {/* Botão Verificados */}

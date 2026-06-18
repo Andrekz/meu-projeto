@@ -3,23 +3,17 @@
 import { pool } from '../../lib/db';
 import { revalidatePath } from 'next/cache';
 
-// Função para buscar todas as ocorrências do banco
-// Caminho do arquivo: app/alertas/actions.ts
-
 export async function buscarOcorrencias(filter?: string, lat?: number, lng?: number) {
   try {
     let query = 'SELECT * FROM ocorrencias';
     let params: any[] = [];
 
     if (filter === 'verificados') {
-      // Filtra apenas os que foram validados pela moderação
       query += ' WHERE verificado = TRUE ORDER BY criado_em DESC';
     } else if (filter === 'proximos' && lat && lng) {
-      // Cálculo matemático aproximado de distância (Pitágoras) para ordenar pelo mais próximo
       query += ' ORDER BY (POW(latitude - ?, 2) + POW(longitude - ?, 2)) ASC';
       params = [lat, lng];
     } else {
-      // Padrão: Recentes (ordem cronológica)
       query += ' ORDER BY criado_em DESC';
     }
 
@@ -31,7 +25,18 @@ export async function buscarOcorrencias(filter?: string, lat?: number, lng?: num
   }
 }
 
-// Função para salvar uma nova denúncia enviada pelo usuário
+export async function buscarOcorrenciasComCoordenadas() {
+  try {
+    const [rows] = await pool.query(
+      'SELECT * FROM ocorrencias WHERE latitude IS NOT NULL AND longitude IS NOT NULL ORDER BY criado_em DESC'
+    );
+    return rows as any[];
+  } catch (error: any) {
+    console.error('Erro ao buscar ocorrências com coordenadas:', error.message);
+    return [];
+  }
+}
+
 export async function criarOcorrencia(formData: FormData) {
   const tipo = formData.get('tipo') as string;
   const titulo = formData.get('titulo') as string;
@@ -44,14 +49,39 @@ export async function criarOcorrencia(formData: FormData) {
   }
 
   try {
-    await pool.query(
+    const [result] = await pool.query(
       'INSERT INTO ocorrencias (tipo, titulo, descricao, endereco, bairro) VALUES (?, ?, ?, ?, ?)',
       [tipo, titulo, descricao, endereco, bairro]
     );
+
+    const insertId = (result as any).insertId;
+
+    // Geocoding via Nominatim para que o alerta apareça no mapa
+    try {
+      const query = `${endereco}, ${bairro}, Curitiba, PR, Brasil`;
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
+        { headers: { 'User-Agent': 'IterVigilans-Academic-Project-guiselig10' } }
+      );
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        const { lat, lon } = data[0];
+        await pool.query(
+          'UPDATE ocorrencias SET latitude = ?, longitude = ? WHERE id = ?',
+          [parseFloat(lat), parseFloat(lon), insertId]
+        );
+      }
+    } catch {
+      // Geocoding falhou — coordenadas permanecem nulas
+    }
   } catch (error: any) {
     console.error('Erro ao criar ocorrência:', error.message);
     throw new Error('Erro ao salvar no banco de dados.');
   }
+
+  revalidatePath('/alertas');
+  revalidatePath('/mapa');
+  revalidatePath('/dashboard');
 }
 
 export async function deletarOcorrencia(id: number) {
@@ -62,26 +92,22 @@ export async function deletarOcorrencia(id: number) {
     throw new Error('Erro ao remover o alerta do banco de dados.');
   }
 
-  // Força o Next.js a atualizar as telas na hora
   revalidatePath('/alertas');
+  revalidatePath('/mapa');
   revalidatePath('/dashboard');
 }
 
-// ... (mantenha as outras funções: buscarOcorrencias, criarOcorrencia, deletarOcorrencia)
-
 export async function buscarMetricasHoje() {
   try {
-    // Busca contagem agrupada por tipo apenas para o dia de hoje
     const query = `
-      SELECT tipo, COUNT(*) as total 
-      FROM ocorrencias 
-      WHERE DATE(criado_em) = CURDATE() 
+      SELECT tipo, COUNT(*) as total
+      FROM ocorrencias
+      WHERE DATE(criado_em) = CURDATE()
       GROUP BY tipo
     `;
-    
+
     const [rows] = await pool.query(query);
-    
-    // Objeto padrão zerado para garantir que a tela não quebre se não houver dados
+
     const metricas = {
       Assalto: 0,
       Iluminacao: 0,
@@ -89,7 +115,6 @@ export async function buscarMetricasHoje() {
       PostoSeguro: 0
     };
 
-    // Mapeia o resultado do banco para o nosso objeto
     (rows as any[]).forEach(row => {
       if (row.tipo === 'Assalto') metricas.Assalto = row.total;
       if (row.tipo === 'Iluminação') metricas.Iluminacao = row.total;
