@@ -30,7 +30,12 @@ export async function buscarOcorrenciasComCoordenadas() {
     const [rows] = await pool.query(
       'SELECT * FROM ocorrencias WHERE latitude IS NOT NULL AND longitude IS NOT NULL ORDER BY criado_em DESC'
     );
-    return rows as any[];
+    // MySQL2 retorna DECIMAL como string — converte para number
+    return (rows as any[]).map(r => ({
+      ...r,
+      latitude: parseFloat(r.latitude),
+      longitude: parseFloat(r.longitude),
+    }));
   } catch (error: any) {
     console.error('Erro ao buscar ocorrências com coordenadas:', error.message);
     return [];

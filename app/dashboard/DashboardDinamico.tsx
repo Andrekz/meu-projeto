@@ -42,8 +42,19 @@ function calcularDistancia(lat1: number, lon1: number, lat2: number, lon2: numbe
 export default function DashboardDinamico({ ocorrenciasIniciais, postosIniciais }: DashboardDinamicoProps) {
   const [relogio, setRelogio] = useState('');
   const [posicaoUsuario, setPosicaoUsuario] = useState<[number, number] | null>(null);
-  const [bairroDetectado, setBairroDetectado] = useState('Detectando...');
-  const [distanciaMinima, setDistanciaMinima] = useState<string>('Calculando...');
+  const [bairroDetectado, setBairroDetectado] = useState('Curitiba');
+  const [distanciaMinima, setDistanciaMinima] = useState<string>(() => {
+    // Calcula imediatamente com os postos pré-carregados e o centro padrão de Curitiba
+    if (postosIniciais.length === 0) return 'N/A';
+    const LAT_CURITIBA = -25.4296;
+    const LON_CURITIBA = -49.2675;
+    let menorD = Infinity;
+    postosIniciais.forEach(p => {
+      const d = calcularDistancia(LAT_CURITIBA, LON_CURITIBA, p.latitude, p.longitude);
+      if (d < menorD) menorD = d;
+    });
+    return menorD < 1000 ? `${menorD}m` : `${(menorD / 1000).toFixed(1)}km`;
+  });
   const [postos, setPostos] = useState<PostoSeguro[]>(postosIniciais);
 
   // Converte ocorrencias com coordenadas para pontos do mini mapa

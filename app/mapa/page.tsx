@@ -2,11 +2,11 @@ export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
 import { Home, AlertTriangle, MapPin, LogOut } from 'lucide-react';
-import { buscarOcorrenciasComCoordenadas } from '../alertas/actions';
+import { buscarOcorrenciasDoMapa } from './actions';
 import MapaRiscoContent from './MapaRiscoContent';
 
 export default async function MapaRisco() {
-  const ocorrencias = await buscarOcorrenciasComCoordenadas();
+  const ocorrencias = await buscarOcorrenciasDoMapa();
 
   return (
     <div className="bg-black min-h-screen text-white flex">

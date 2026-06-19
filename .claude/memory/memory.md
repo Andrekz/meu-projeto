@@ -21,6 +21,8 @@
 - Alertas sem lat/lon não aparecem no mapa — resolvido: geocoding automático em `criarOcorrencia` via Nominatim
 - Mapa usava array estático `HISTORICO_CRIMINAL_CURITIBA` — resolvido: agora lê do banco
 - Postos seguros eram buscados via Overpass a cada carregamento — resolvido: cache no banco com TTL 24h
+- MySQL2 retorna DECIMAL como string JavaScript — resolvido: `parseFloat()` aplicado em `buscarOcorrenciasComCoordenadas`, `buscarOcorrenciasDoMapa` e `buscarPostosDB`; sem isso MapLibre recebia strings e falhava silenciosamente
+- `distanciaMinima` ficava em "Calculando..." para sempre sem GPS — resolvido: inicializado via lazy `useState(() => ...)` calculando do `postosIniciais` com coordenadas padrão de Curitiba
 
 ## Padrões & Convenções
 - Componentes de mapa são 'use client' e importados via `dynamic(() => ..., { ssr: false })` para evitar SSR

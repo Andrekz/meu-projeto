@@ -25,7 +25,12 @@ export async function buscarPostosDB(lat = -25.4296, lon = -49.2675, raioMetros 
        ORDER BY distancia`,
       [lat, lat, lon, raioMetros]
     );
-    return rows as PostoSeguro[];
+    // MySQL2 retorna DECIMAL como string — converte para number
+    return (rows as any[]).map(r => ({
+      ...r,
+      latitude: parseFloat(r.latitude),
+      longitude: parseFloat(r.longitude),
+    })) as PostoSeguro[];
   } catch (error: any) {
     console.error('Erro ao buscar postos do banco:', error.message);
     return [];
